@@ -147,8 +147,6 @@ export default function LawnPage() {
     processInstructions(text)
   }
 
-  // This is the updated processInstructions function with flexible position parsing
-
   const processInstructions = (text: string) => {
     try {
       console.log('Raw text content:', text)
@@ -441,7 +439,7 @@ export default function LawnPage() {
       // Set event listener for when audio ends
       audioRef.current.onended = () => {
         if (audioRef.current) {
-          audioRef.current.play() // Loop it manually if needed
+          audioRef.current.play()
         }
       }
     }
@@ -504,8 +502,8 @@ export default function LawnPage() {
       silenceAudio()
 
       toast({
-        title: 'Terminé !',
-        description: 'La tonte de la pelouse est terminée',
+        title: 'Et voilà !',
+        description: 'La pelouse est tondue. Merci à vous !',
         status: 'success',
         duration: 3000,
         isClosable: true,
@@ -706,10 +704,6 @@ FFRLLRFRLF"
                 <Text fontSize="sm">Orientation de la tondeuse</Text>
               </Flex>
             </Flex>
-
-            <Text fontSize="sm" color="gray.400">
-              Cliquer sur une parcelle pour la tondre manuellement.
-            </Text>
           </VStack>
         </Box>
       </VStack>
