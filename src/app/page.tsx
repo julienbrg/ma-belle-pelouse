@@ -21,19 +21,28 @@ import {
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useTranslation } from '@/hooks/useTranslation'
+import { RepeatIcon } from '@chakra-ui/icons'
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import {
-  RepeatIcon,
-  ArrowUpIcon,
-  ArrowRightIcon,
-  ArrowDownIcon,
-  ArrowLeftIcon,
-} from '@chakra-ui/icons'
+  faArrowUp,
+  faArrowRight,
+  faArrowDown,
+  faArrowLeft,
+} from '@fortawesome/free-solid-svg-icons'
+// Import the FontAwesome core and add the icons to the library
+import { library } from '@fortawesome/fontawesome-svg-core'
+
+// Add the icons to the library
+library.add(faArrowUp, faArrowRight, faArrowDown, faArrowLeft)
 
 interface LawnCell {
   x: number
   y: number
   isMown: boolean
 }
+
+// Direction type for the lawnmower
+type Direction = 'up' | 'right' | 'down' | 'left' | null
 
 export default function LawnPage() {
   const t = useTranslation()
@@ -64,6 +73,10 @@ export default function LawnPage() {
   const [lawnGrid, setLawnGrid] = useState<LawnCell[][]>(initializeGrid)
   const [fileUploaded, setFileUploaded] = useState<boolean>(false)
   const [fileName, setFileName] = useState<string>('')
+
+  // New states for lawnmower position and direction
+  const [lawnmowerPosition, setLawnmowerPosition] = useState<{ x: number; y: number } | null>(null)
+  const [lawnmowerDirection, setLawnmowerDirection] = useState<Direction>(null)
 
   // Colors for the lawn cells
   const mownColor = useColorModeValue('green.300', 'green.400')
@@ -98,6 +111,8 @@ export default function LawnPage() {
     setLawnGrid(initializeGrid())
     setFileUploaded(false)
     setFileName('')
+    setLawnmowerPosition(null)
+    setLawnmowerDirection(null)
   }
 
   // Function to prompt for a new file upload
@@ -160,6 +175,20 @@ export default function LawnPage() {
     }
   }
 
+  // Helper function to determine direction between two points
+  const getDirection = (
+    from: { x: number; y: number },
+    to: { x: number; y: number }
+  ): Direction => {
+    if (from.x === to.x) {
+      if (from.y < to.y) return 'up'
+      return 'down'
+    } else {
+      if (from.x < to.x) return 'right'
+      return 'left'
+    }
+  }
+
   // Function to mow the lawn
   const mow = () => {
     resetLawn()
@@ -194,8 +223,6 @@ export default function LawnPage() {
       { x: 2, y: 0 },
       { x: 2, y: 1 },
       { x: 2, y: 2 },
-      { x: 2, y: 3 },
-      { x: 2, y: 4 },
     ]
 
     const pattern2 = [
@@ -211,9 +238,6 @@ export default function LawnPage() {
       { x: 3, y: 4 },
       { x: 2, y: 4 },
       { x: 2, y: 3 },
-      { x: 2, y: 2 },
-      { x: 2, y: 1 },
-      { x: 2, y: 0 },
     ]
 
     // Function to map pattern coordinates to grid indices
@@ -266,6 +290,9 @@ export default function LawnPage() {
             setTimeout(() => {
               setIsMowing(false)
               silenceAudio()
+              // Clear lawnmower position when done
+              setLawnmowerPosition(null)
+              setLawnmowerDirection(null)
 
               toast({
                 title: 'Terminé !',
@@ -287,6 +314,29 @@ export default function LawnPage() {
     ) => {
       cells.forEach((cell, index) => {
         setTimeout(() => {
+          // Set the lawnmower position to the current cell
+          setLawnmowerPosition({ x: cell.x, y: cell.y })
+
+          // Calculate direction if this isn't the first cell
+          if (index > 0) {
+            const prevCell = cells[index - 1]
+            const direction = getDirection(
+              { x: prevCell.x, y: prevCell.y },
+              { x: cell.x, y: cell.y }
+            )
+            setLawnmowerDirection(direction)
+          } else {
+            // Set initial direction based on next cell (if available)
+            if (cells.length > 1) {
+              const nextCell = cells[1]
+              const direction = getDirection(
+                { x: cell.x, y: cell.y },
+                { x: nextCell.x, y: nextCell.y }
+              )
+              setLawnmowerDirection(direction)
+            }
+          }
+
           setLawnGrid(prevGrid => {
             const newGrid = JSON.parse(JSON.stringify(prevGrid)) // Deep copy
             newGrid[cell.rowIndex][cell.cellIndex].isMown = true
@@ -313,6 +363,22 @@ export default function LawnPage() {
     })
   }
 
+  // Function to render the appropriate direction arrow
+  const renderDirectionArrow = () => {
+    switch (lawnmowerDirection) {
+      case 'up':
+        return <FontAwesomeIcon icon={faArrowUp} color="#E53E3E" size="lg" />
+      case 'right':
+        return <FontAwesomeIcon icon={faArrowRight} color="#E53E3E" size="lg" />
+      case 'down':
+        return <FontAwesomeIcon icon={faArrowDown} color="#E53E3E" size="lg" />
+      case 'left':
+        return <FontAwesomeIcon icon={faArrowLeft} color="#E53E3E" size="lg" />
+      default:
+        return null
+    }
+  }
+
   return (
     <Container maxW="container.sm" py={10}>
       <VStack spacing={6} align="stretch">
@@ -331,30 +397,28 @@ export default function LawnPage() {
             />
           </FormControl>
 
-          {fileUploaded && (
-            <VStack spacing={3} align="stretch">
-              <Button colorScheme="blue" onClick={mow} w="full" isDisabled={isMowing}>
-                {isMowing ? 'Tonte en cours...' : `Lancer la tonte : ${fileName}`}
+          <VStack spacing={3} align="stretch">
+            <Button colorScheme="blue" onClick={mow} w="full" isDisabled={isMowing}>
+              {isMowing ? 'Tonte en cours...' : `Lancer la tonte : ${fileName}`}
+            </Button>
+
+            <HStack>
+              <Button
+                colorScheme="gray"
+                onClick={promptNewFileUpload}
+                w="full"
+                isDisabled={isMowing}
+              >
+                Changer d&apos;instructions
               </Button>
 
-              <HStack>
-                <Button
-                  colorScheme="gray"
-                  onClick={promptNewFileUpload}
-                  w="full"
-                  isDisabled={isMowing}
-                >
-                  Changer d&apos;instructions
+              {isSoundPlaying && (
+                <Button colorScheme="red" onClick={silenceAudio} w="full">
+                  Couper le son
                 </Button>
-
-                {isSoundPlaying && (
-                  <Button colorScheme="red" onClick={silenceAudio} w="full">
-                    Couper le son
-                  </Button>
-                )}
-              </HStack>
-            </VStack>
-          )}
+              )}
+            </HStack>
+          </VStack>
         </Box>
 
         {/* Audio Element (hidden) */}
@@ -384,7 +448,14 @@ export default function LawnPage() {
                       alignItems="center"
                       justifyContent="center"
                       transition="all 0.2s"
-                    />
+                      position="relative"
+                    >
+                      {/* Render the lawnmower arrow if this is the current position */}
+                      {lawnmowerPosition &&
+                        lawnmowerPosition.x === cell.x &&
+                        lawnmowerPosition.y === cell.y &&
+                        renderDirectionArrow()}
+                    </GridItem>
                   </Tooltip>
                 ))
               )}
@@ -399,6 +470,12 @@ export default function LawnPage() {
               <Flex alignItems="center" gap={2}>
                 <Box w="16px" h="16px" bg={unmownColor} borderRadius="sm"></Box>
                 <Text fontSize="sm">Hautes herbes</Text>
+              </Flex>
+              <Flex alignItems="center" gap={2}>
+                <Box display="flex" alignItems="center" justifyContent="center" w="16px" h="16px">
+                  <FontAwesomeIcon icon={faArrowRight} color="#E53E3E" />
+                </Box>
+                <Text fontSize="sm">Tondeuse</Text>
               </Flex>
             </Flex>
 
