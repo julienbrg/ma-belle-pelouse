@@ -22,6 +22,24 @@ Add your own keys in the `.env` file (you can get it in your [Reown dashboard](h
 pnpm dev
 ```
 
+## Use
+
+5 lawnmowers:
+
+```txt
+55
+00 N
+FFFFF
+10 N
+FFFFF
+20 N
+FFFFF
+30 N
+FFFFF
+40 N
+FFFFF
+```
+
 ### Documentation References
 
 - [Chakra UI](https://chakra-ui.com/docs/components) - UI components
