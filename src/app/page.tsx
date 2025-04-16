@@ -416,7 +416,8 @@ export default function LawnPage() {
     return newLawnmower
   }
 
-  // Function to mow the lawn
+  // Update the mow function to mark initial positions as mown
+
   const mow = async () => {
     if (lawnmowers.length === 0) {
       toast({
@@ -437,13 +438,11 @@ export default function LawnPage() {
       audioRef.current.play()
       setIsSoundPlaying(true)
 
-      // Set event listener when audio ends
+      // Set event listener for when audio ends
       audioRef.current.onended = () => {
         if (audioRef.current) {
-          // Add this null check
-          audioRef.current.play() // Now it's safe
+          audioRef.current.play() // Loop it manually if needed
         }
-        setIsSoundPlaying(false)
       }
     }
 
@@ -469,6 +468,9 @@ export default function LawnPage() {
         let currentLawnmower = { ...workingLawnmowers[i] }
         const instructions = currentLawnmower.instructions.split('') as Instruction[]
 
+        // Mark the initial position as mown
+        markCellAsMown(currentLawnmower.x, currentLawnmower.y)
+
         // Execute each instruction with a delay
         for (let j = 0; j < instructions.length; j++) {
           // Wait before executing next instruction
@@ -484,28 +486,9 @@ export default function LawnPage() {
             return updated
           })
 
-          // Mark cell as mown if we moved to it
+          // Mark cell as mown if we moved to it with F instruction
           if (instructions[j] === 'F') {
-            setLawnGrid(prevGrid => {
-              const newGrid = JSON.parse(JSON.stringify(prevGrid))
-
-              // Find the row index based on the y-coordinate
-              const rowIndex = newGrid.findIndex(
-                (row: LawnCell[]) => row[0].y === currentLawnmower.y
-              )
-
-              if (rowIndex !== -1) {
-                const cellIndex = newGrid[rowIndex].findIndex(
-                  (cell: LawnCell) => cell.x === currentLawnmower.x && cell.y === currentLawnmower.y
-                )
-
-                if (cellIndex !== -1) {
-                  newGrid[rowIndex][cellIndex].isMown = true
-                }
-              }
-
-              return newGrid
-            })
+            markCellAsMown(currentLawnmower.x, currentLawnmower.y)
           }
         }
 
@@ -540,6 +523,28 @@ export default function LawnPage() {
         isClosable: true,
       })
     }
+  }
+
+  // Helper function to mark a cell as mown
+  const markCellAsMown = (x: number, y: number) => {
+    setLawnGrid(prevGrid => {
+      const newGrid = JSON.parse(JSON.stringify(prevGrid))
+
+      // Find the row index based on the y-coordinate
+      const rowIndex = newGrid.findIndex((row: LawnCell[]) => row[0].y === y)
+
+      if (rowIndex !== -1) {
+        const cellIndex = newGrid[rowIndex].findIndex(
+          (cell: LawnCell) => cell.x === x && cell.y === y
+        )
+
+        if (cellIndex !== -1) {
+          newGrid[rowIndex][cellIndex].isMown = true
+        }
+      }
+
+      return newGrid
+    })
   }
 
   // Function to render the appropriate direction arrow
