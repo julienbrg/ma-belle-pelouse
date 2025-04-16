@@ -16,11 +16,12 @@ import {
   FormControl,
   FormLabel,
   useToast,
+  HStack,
 } from '@chakra-ui/react'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useTranslation } from '@/hooks/useTranslation'
-import { RepeatIcon, AttachmentIcon } from '@chakra-ui/icons'
+import { RepeatIcon } from '@chakra-ui/icons'
 
 interface LawnCell {
   x: number
@@ -33,6 +34,7 @@ export default function LawnPage() {
   const gridSize = 5
   const toast = useToast()
   const audioRef = useRef<HTMLAudioElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Initialize the lawn grid with all cells unmown (hautes herbes)
   const initializeGrid = () => {
@@ -92,6 +94,14 @@ export default function LawnPage() {
     setFileName('')
   }
 
+  // Function to prompt for a new file upload
+  const promptNewFileUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+      fileInputRef.current.click()
+    }
+  }
+
   // Function to handle file upload
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
@@ -114,6 +124,9 @@ export default function LawnPage() {
       return
     }
 
+    // Reset the lawn grid
+    setLawnGrid(initializeGrid())
+
     // Set the file as uploaded
     setFileUploaded(true)
     setFileName(file.name)
@@ -129,6 +142,8 @@ export default function LawnPage() {
 
   // State for tracking whether sound is playing
   const [isSoundPlaying, setIsSoundPlaying] = useState(false)
+  // State for tracking if mowing is in progress
+  const [isMowing, setIsMowing] = useState(false)
 
   // Function to silence the audio
   const silenceAudio = () => {
@@ -145,6 +160,7 @@ export default function LawnPage() {
     if (audioRef.current) {
       audioRef.current.play()
       setIsSoundPlaying(true)
+      setIsMowing(true)
 
       // Set event listener for when audio ends
       audioRef.current.onended = () => {
@@ -179,6 +195,14 @@ export default function LawnPage() {
           newGrid[cell.rowIndex][cell.cellIndex].isMown = true
           return newGrid
         })
+
+        // If this is the last cell, set mowing to false
+        if (index === allCells.length - 1) {
+          setTimeout(() => {
+            setIsMowing(false)
+            silenceAudio()
+          }, 500) // Small delay after the last cell is mown
+        }
       }, index * 1000) // 1 second delay for each cell
     })
 
@@ -202,19 +226,40 @@ export default function LawnPage() {
         <Box borderRadius="md" bg="black" p={4}>
           <FormControl mb={4}>
             <FormLabel>Chargez vos instructions (fichier en .txt)</FormLabel>
-            <Input type="file" accept=".txt" onChange={handleFileUpload} pt={1} height="auto" />
+            <Input
+              type="file"
+              ref={fileInputRef}
+              accept=".txt"
+              onChange={handleFileUpload}
+              pt={1}
+              height="auto"
+              display={fileUploaded ? 'none' : 'block'}
+            />
           </FormControl>
 
           {fileUploaded && (
-            <Button leftIcon={<AttachmentIcon />} colorScheme="blue" onClick={mow} w="full">
-              Instructions de tonte: {fileName}
-            </Button>
-          )}
+            <VStack spacing={3} align="stretch">
+              <Button colorScheme="blue" onClick={mow} w="full" isDisabled={isMowing}>
+                {isMowing ? 'Tonte en cours...' : `Lancer la tonte : ${fileName}`}
+              </Button>
 
-          {isSoundPlaying && (
-            <Button colorScheme="red" onClick={silenceAudio} w="full" mt={2}>
-              Couper le son
-            </Button>
+              <HStack>
+                <Button
+                  colorScheme="gray"
+                  onClick={promptNewFileUpload}
+                  w="full"
+                  isDisabled={isMowing}
+                >
+                  Changer d&apos;instructions
+                </Button>
+
+                {isSoundPlaying && (
+                  <Button colorScheme="red" onClick={silenceAudio} w="full">
+                    Couper le son
+                  </Button>
+                )}
+              </HStack>
+            </VStack>
           )}
         </Box>
 
@@ -266,7 +311,13 @@ export default function LawnPage() {
             <Text fontSize="sm" color="gray.400">
               Cliquer sur une parcelle pour la tondre.
             </Text>
-            <Button leftIcon={<RepeatIcon />} colorScheme="green" onClick={resetLawn} size="sm">
+            <Button
+              leftIcon={<RepeatIcon />}
+              colorScheme="green"
+              onClick={resetLawn}
+              size="sm"
+              isDisabled={isMowing}
+            >
               Nouvelle saison
             </Button>
           </VStack>
