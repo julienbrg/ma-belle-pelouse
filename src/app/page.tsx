@@ -21,7 +21,13 @@ import {
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { useTranslation } from '@/hooks/useTranslation'
-import { RepeatIcon } from '@chakra-ui/icons'
+import {
+  RepeatIcon,
+  ArrowUpIcon,
+  ArrowRightIcon,
+  ArrowDownIcon,
+  ArrowLeftIcon,
+} from '@chakra-ui/icons'
 
 interface LawnCell {
   x: number
@@ -156,6 +162,8 @@ export default function LawnPage() {
 
   // Function to mow the lawn
   const mow = () => {
+    resetLawn()
+
     // Play the sound
     if (audioRef.current) {
       audioRef.current.play()
@@ -171,40 +179,130 @@ export default function LawnPage() {
     // Log mowing in progress
     console.log('mowing in progress')
 
-    // Create a flattened array of all cells in order from (0,0), (0,1), etc.
-    const allCells: { x: number; y: number; rowIndex: number; cellIndex: number }[] = []
+    // Define the two mowing patterns
+    const pattern1 = [
+      { x: 0, y: 0 },
+      { x: 0, y: 1 },
+      { x: 0, y: 2 },
+      { x: 0, y: 3 },
+      { x: 0, y: 4 },
+      { x: 1, y: 4 },
+      { x: 1, y: 3 },
+      { x: 1, y: 2 },
+      { x: 1, y: 1 },
+      { x: 1, y: 0 },
+      { x: 2, y: 0 },
+      { x: 2, y: 1 },
+      { x: 2, y: 2 },
+      { x: 2, y: 3 },
+      { x: 2, y: 4 },
+    ]
 
-    for (let x = 0; x < gridSize; x++) {
-      for (let y = 0; y < gridSize; y++) {
-        // Find the actual indices in our grid structure
-        const rowIndex = lawnGrid.findIndex(row => row[0].y === y)
-        if (rowIndex !== -1) {
-          const cellIndex = lawnGrid[rowIndex].findIndex(cell => cell.x === x && cell.y === y)
-          if (cellIndex !== -1) {
-            allCells.push({ x, y, rowIndex, cellIndex })
+    const pattern2 = [
+      { x: 4, y: 4 },
+      { x: 4, y: 3 },
+      { x: 4, y: 2 },
+      { x: 4, y: 1 },
+      { x: 4, y: 0 },
+      { x: 3, y: 0 },
+      { x: 3, y: 1 },
+      { x: 3, y: 2 },
+      { x: 3, y: 3 },
+      { x: 3, y: 4 },
+      { x: 2, y: 4 },
+      { x: 2, y: 3 },
+      { x: 2, y: 2 },
+      { x: 2, y: 1 },
+      { x: 2, y: 0 },
+    ]
+
+    // Function to map pattern coordinates to grid indices
+    const mapPatternToGrid = (pattern: { x: number; y: number }[]) => {
+      const mapped: { x: number; y: number; rowIndex: number; cellIndex: number }[] = []
+
+      pattern.forEach(coord => {
+        // Only process coordinates that are within our grid boundaries
+        if (coord.x < gridSize && coord.y < gridSize) {
+          const rowIndex = lawnGrid.findIndex(row => row[0].y === coord.y)
+          if (rowIndex !== -1) {
+            const cellIndex = lawnGrid[rowIndex].findIndex(
+              cell => cell.x === coord.x && cell.y === coord.y
+            )
+            if (cellIndex !== -1) {
+              mapped.push({
+                x: coord.x,
+                y: coord.y,
+                rowIndex,
+                cellIndex,
+              })
+            }
           }
         }
-      }
+      })
+
+      return mapped
     }
 
-    // Mow cells one by one with delay
-    allCells.forEach((cell, index) => {
-      setTimeout(() => {
-        setLawnGrid(prevGrid => {
-          const newGrid = JSON.parse(JSON.stringify(prevGrid)) // Deep copy
-          newGrid[cell.rowIndex][cell.cellIndex].isMown = true
-          return newGrid
-        })
+    // Map both patterns
+    const pattern1Cells = mapPatternToGrid(pattern1)
+    const pattern2Cells = mapPatternToGrid(pattern2)
 
-        // If this is the last cell, set mowing to false
-        if (index === allCells.length - 1) {
-          setTimeout(() => {
-            setIsMowing(false)
-            silenceAudio()
-          }, 500) // Small delay after the last cell is mown
-        }
-      }, index * 1000) // 1 second delay for each cell
-    })
+    // Execute pattern 1, then pattern 2
+    const executePatterns = () => {
+      // Execute pattern 1
+      executePattern(pattern1Cells, () => {
+        // When pattern 1 is complete, wait a bit then execute pattern 2
+        setTimeout(() => {
+          toast({
+            title: 'Deuxième motif',
+            description: 'Démarrage du deuxième motif de tonte',
+            status: 'info',
+            duration: 2000,
+            isClosable: true,
+          })
+
+          executePattern(pattern2Cells, () => {
+            // When both patterns are complete
+            setTimeout(() => {
+              setIsMowing(false)
+              silenceAudio()
+
+              toast({
+                title: 'Terminé !',
+                description: 'La tonte de la pelouse est terminée',
+                status: 'success',
+                duration: 3000,
+                isClosable: true,
+              })
+            }, 500)
+          })
+        }, 2000) // 2 second pause between patterns
+      })
+    }
+
+    // Function to execute a single pattern with a callback when complete
+    const executePattern = (
+      cells: { x: number; y: number; rowIndex: number; cellIndex: number }[],
+      onComplete: () => void
+    ) => {
+      cells.forEach((cell, index) => {
+        setTimeout(() => {
+          setLawnGrid(prevGrid => {
+            const newGrid = JSON.parse(JSON.stringify(prevGrid)) // Deep copy
+            newGrid[cell.rowIndex][cell.cellIndex].isMown = true
+            return newGrid
+          })
+
+          // If this is the last cell, call onComplete
+          if (index === cells.length - 1) {
+            onComplete()
+          }
+        }, index * 1000) // 1 second delay for each cell
+      })
+    }
+
+    // Start execution
+    executePatterns()
 
     toast({
       title: "C'est parti !",
@@ -218,10 +316,6 @@ export default function LawnPage() {
   return (
     <Container maxW="container.sm" py={10}>
       <VStack spacing={6} align="stretch">
-        {/* <Heading as="h1" size="xl" mb={2}>
-          Ma belle pelouse !
-        </Heading> */}
-
         {/* File Upload Section */}
         <Box borderRadius="md" bg="black" p={4}>
           <FormControl mb={4}>
