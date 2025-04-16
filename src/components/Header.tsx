@@ -124,9 +124,9 @@ export default function Header() {
               <Link href="/" color="white">
                 <MenuItem fontSize="md">Pelouse</MenuItem>
               </Link>
-              <Link href="/info" color="white">
+              {/* <Link href="/info" color="white">
                 <MenuItem fontSize="md">Info</MenuItem>
-              </Link>
+              </Link> */}
               <Link
                 target="blank"
                 href="https://github.com/julienbrg/ma-belle-pelouse"
