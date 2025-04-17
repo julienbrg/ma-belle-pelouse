@@ -8,6 +8,12 @@ Sit back, relax and execute lawn mowing instructions (`.txt` file).
 pnpm i
 ```
 
+## Test
+
+```bash
+pnpm test
+```
+
 ## Run
 
 Create a `.env` file:
